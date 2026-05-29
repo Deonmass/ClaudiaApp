@@ -37,12 +37,31 @@ type ProjectRow = {
   name: string
   code: string
   description: string | null
+  client_id: string | null
   manager_id: string
   start_date: string
   end_date: string | null
   status: Project['status']
   created_at: string
   updated_at: string
+  client?: { name: string } | null
+}
+
+export const PROJECT_SELECT = '*, client:clients(name)'
+
+function clientNameFromProjectRow(row: ProjectRow): string | undefined {
+  return row.client?.name
+}
+
+export function enrichProjectWithClient(
+  project: Project,
+  clients: Client[],
+): Project {
+  if (project.clientName) return project
+  const fromJoin = project.clientId
+    ? clients.find((c) => c.id === project.clientId)?.name
+    : undefined
+  return fromJoin ? { ...project, clientName: fromJoin } : project
 }
 
 type CashMovementRow = {
@@ -144,6 +163,8 @@ export function projectFromRow(row: ProjectRow): Project {
     name: row.name,
     code: row.code,
     description: row.description ?? undefined,
+    clientId: row.client_id ?? undefined,
+    clientName: clientNameFromProjectRow(row),
     managerId: row.manager_id,
     startDate: row.start_date,
     endDate: row.end_date ?? undefined,
@@ -161,6 +182,7 @@ export function projectToRow(
     name: project.name,
     code: project.code,
     description: project.description ?? null,
+    client_id: project.clientId ?? null,
     manager_id: project.managerId,
     start_date: project.startDate,
     end_date: project.endDate ?? null,
@@ -256,10 +278,13 @@ export function appDataFromRows(rows: {
   attendance: AttendanceRow[]
   settings: AppSettingsRow | null
 }): AppData {
+  const clients = rows.clients.map(clientFromRow)
   return {
     users: rows.users.map(userFromRow),
-    clients: rows.clients.map(clientFromRow),
-    projects: rows.projects.map(projectFromRow),
+    clients,
+    projects: rows.projects
+      .map(projectFromRow)
+      .map((p) => enrichProjectWithClient(p, clients)),
     cashMovements: rows.cashMovements.map(cashMovementFromRow),
     attendance: rows.attendance.map(attendanceFromRow),
     settings: settingsFromRow(rows.settings),

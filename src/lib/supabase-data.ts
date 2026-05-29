@@ -7,6 +7,7 @@ import {
   cashMovementToRow,
   clientFromRow,
   clientToRow,
+  PROJECT_SELECT,
   projectFromRow,
   projectToRow,
   settingsFromRow,
@@ -24,12 +25,24 @@ import type {
   User,
 } from '../types'
 
+async function fetchProjectsOrdered() {
+  const withClient = await supabase
+    .from('projects')
+    .select(PROJECT_SELECT)
+    .order('created_at', { ascending: false })
+  if (!withClient.error) return withClient
+  return supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false })
+}
+
 export async function fetchAppData(): Promise<AppData> {
   const [users, clients, projects, cashMovements, attendance, settings] =
     await Promise.all([
       supabase.from('users').select('*').order('full_name'),
       supabase.from('clients').select('*').order('name'),
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      fetchProjectsOrdered(),
       supabase.from('cash_movements').select('*').order('date', { ascending: false }),
       supabase.from('attendance_records').select('*').order('date'),
       supabase.from('app_settings').select('*').eq('id', 1).maybeSingle(),
@@ -141,7 +154,7 @@ export async function insertProjectDb(project: Project): Promise<Project> {
       created_at: project.createdAt,
       updated_at: project.updatedAt,
     })
-    .select('*')
+    .select(PROJECT_SELECT)
     .single()
   if (error) throw error
   return projectFromRow(data)
@@ -152,6 +165,7 @@ export async function updateProjectDb(id: string, patch: Partial<Project>): Prom
   if (patch.name !== undefined) row.name = patch.name
   if (patch.code !== undefined) row.code = patch.code
   if (patch.description !== undefined) row.description = patch.description ?? null
+  if (patch.clientId !== undefined) row.client_id = patch.clientId ?? null
   if (patch.managerId !== undefined) row.manager_id = patch.managerId
   if (patch.startDate !== undefined) row.start_date = patch.startDate
   if (patch.endDate !== undefined) row.end_date = patch.endDate ?? null
@@ -161,7 +175,7 @@ export async function updateProjectDb(id: string, patch: Partial<Project>): Prom
     .from('projects')
     .update(row)
     .eq('id', id)
-    .select('*')
+    .select(PROJECT_SELECT)
     .single()
   if (error) throw error
   return projectFromRow(data)

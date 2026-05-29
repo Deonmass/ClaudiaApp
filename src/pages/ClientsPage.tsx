@@ -2,17 +2,20 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import type { Column } from '../components/ui/DataTable'
 import { DataTable } from '../components/ui/DataTable'
 import { Input, Textarea } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { useData } from '../contexts/DataContext'
+import { useFilteredData } from '../contexts/YearFilterContext'
 import { formatDate } from '../lib/utils'
 import type { Client } from '../types'
 
 export function ClientsPage() {
-  const { data, addClient, updateClient, deleteClient } = useData()
+  const { addClient, updateClient, deleteClient } = useData()
+  const data = useFilteredData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Client | null>(null)
   const [showInactive, setShowInactive] = useState(false)
@@ -50,21 +53,21 @@ export function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Clients</h2>
-          <p className="text-sm text-slate-500">Gestion de la clientèle</p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setModalOpen(true)
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau client
-        </Button>
-      </div>
+      <PageHeading
+        title="Clients"
+        description="Gestion de la clientèle"
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setModalOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau client
+          </Button>
+        }
+      />
 
       <Card>
         <label className="mb-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">

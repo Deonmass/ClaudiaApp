@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import type { Column } from '../components/ui/DataTable'
 import { DataTable } from '../components/ui/DataTable'
 import { Input, Select } from '../components/ui/Input'
@@ -53,23 +54,21 @@ export function AgentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Agents & utilisateurs
-          </h2>
-          <p className="text-sm text-slate-500">Gestion des comptes et rôles</p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setModalOpen(true)
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Nouvel agent
-        </Button>
-      </div>
+      <PageHeading
+        title="Agents & utilisateurs"
+        description="Gestion des comptes et rôles"
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setModalOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nouvel agent
+          </Button>
+        }
+      />
 
       <Card>
         <DataTable

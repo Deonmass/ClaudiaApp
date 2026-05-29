@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ProjectDetailModal } from '../components/projects/ProjectDetailModal'
@@ -9,16 +9,18 @@ import {
 } from '../components/projects/ProjectsTable'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import { Input, Select, Textarea } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { useData } from '../contexts/DataContext'
+import { useFilteredData } from '../contexts/YearFilterContext'
 import {
   formatDate,
   formatMoney,
   formatProjectDuration,
   projectCashTotals,
 } from '../lib/utils'
-import type { Project, ProjectStatus, User, UserRole } from '../types'
+import type { Client, Project, ProjectStatus, User, UserRole } from '../types'
 import { PROJECT_STATUS_LABELS, ROLE_LABELS } from '../types'
 
 const statusVariant: Record<ProjectStatus, 'success' | 'default' | 'warning'> = {
@@ -30,7 +32,9 @@ const statusVariant: Record<ProjectStatus, 'success' | 'default' | 'warning'> = 
 export type ProjectsView = 'en-cours' | 'cloture'
 
 export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
-  const { data, addProject, updateProject, archiveProject } = useData()
+  const { data: fullData, addProject, updateProject, archiveProject, refresh, refreshing } =
+    useData()
+  const data = useFilteredData()
   const navigate = useNavigate()
   const [formModalOpen, setFormModalOpen] = useState(false)
   const [detailProject, setDetailProject] = useState<Project | null>(null)
@@ -38,7 +42,16 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all')
   const [search, setSearch] = useState('')
 
-  const managers = data.users.filter((u) => u.status === 'actif')
+  const managers = fullData.users.filter((u) => u.status === 'actif')
+
+  const clientsForForm = useMemo(() => {
+    const active = fullData.clients.filter((c) => c.active)
+    if (editing?.clientId && !active.some((c) => c.id === editing.clientId)) {
+      const current = fullData.clients.find((c) => c.id === editing.clientId)
+      if (current) return [current, ...active]
+    }
+    return active
+  }, [fullData.clients, editing])
 
   const viewTitle =
     view === 'cloture' ? 'Projets clôturés' : 'Projets en cours'
@@ -58,9 +71,14 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
         data.cashMovements,
         p.id,
       )
-      return { ...p, entrees, sorties, marge }
+      const clientName =
+        p.clientName ??
+        (p.clientId
+          ? data.clients.find((c) => c.id === p.clientId)?.name
+          : undefined)
+      return { ...p, clientName, entrees, sorties, marge }
     })
-  }, [data.projects, data.cashMovements, statusFilter, view])
+  }, [data.projects, data.cashMovements, data.clients, statusFilter, view])
 
   const openCreate = () => {
     setEditing(null)
@@ -69,18 +87,28 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">{viewTitle}</h2>
-          <p className="text-sm text-slate-500">
-            Gestion et suivi — clic sur le code ou clic droit pour les actions
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Nouveau projet
-        </Button>
-      </div>
+      <PageHeading
+        title={viewTitle}
+        description="Gestion et suivi — clic sur le code ou clic droit pour les actions"
+        actions={
+          <>
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              Nouveau projet
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void refresh()}
+              disabled={refreshing}
+              aria-label="Actualiser la liste"
+              title="Actualiser"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </>
+        }
+      />
 
       <Card>
         <ProjectsToolbar
@@ -88,7 +116,7 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
           onStatusFilter={setStatusFilter}
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Rechercher par nom ou code…"
+          searchPlaceholder="Rechercher par nom, code ou client…"
           statusOptions={
             view === 'cloture'
               ? (['all', 'termine'] as const)
@@ -104,7 +132,7 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
             formatProjectDuration(p.createdAt, p.endDate, p.status)
           }
           managerName={(id) =>
-            data.users.find((u) => u.id === id)?.fullName ?? '—'
+            fullData.users.find((u) => u.id === id)?.fullName ?? '—'
           }
           statusVariant={statusVariant}
           onOpen={setDetailProject}
@@ -133,12 +161,14 @@ export function ProjectsPage({ view = 'en-cours' }: { view?: ProjectsView }) {
         onClose={() => setFormModalOpen(false)}
         project={editing}
         managers={managers}
+        clients={clientsForForm}
         onSave={(form) => {
           if (editing) updateProject(editing.id, form)
           else
             addProject({
               name: form.name!,
               description: form.description,
+              clientId: form.clientId,
               managerId: form.managerId!,
               startDate: form.startDate!,
               endDate: form.endDate,
@@ -156,16 +186,19 @@ function ProjectFormModal({
   onClose,
   project,
   managers,
+  clients,
   onSave,
 }: {
   open: boolean
   onClose: () => void
   project: Project | null
   managers: User[]
+  clients: Client[]
   onSave: (form: Partial<Project>) => void
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [clientId, setClientId] = useState('')
   const [managerId, setManagerId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -177,6 +210,7 @@ function ProjectFormModal({
     if (project) {
       setName(project.name)
       setDescription(project.description ?? '')
+      setClientId(project.clientId ?? '')
       setManagerId(project.managerId)
       setStartDate(project.startDate)
       setEndDate(project.endDate ?? '')
@@ -184,18 +218,20 @@ function ProjectFormModal({
     } else {
       setName('')
       setDescription('')
+      setClientId(clients[0]?.id ?? '')
       setManagerId(managers[0]?.id ?? '')
       setStartDate(new Date().toISOString().slice(0, 10))
       setEndDate('')
       setStatus('actif')
     }
     setErrors({})
-  }, [open, project, managers])
+  }, [open, project, managers, clients])
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     const err: Record<string, string> = {}
     if (!name.trim()) err.name = 'Nom requis'
+    if (!clientId) err.clientId = 'Client requis'
     if (!managerId) err.managerId = 'Responsable requis'
     if (!startDate) err.startDate = 'Date de début requise'
     if (Object.keys(err).length) {
@@ -205,6 +241,7 @@ function ProjectFormModal({
     onSave({
       name: name.trim(),
       description: description.trim() || undefined,
+      clientId,
       managerId,
       startDate,
       endDate: endDate || undefined,
@@ -237,6 +274,21 @@ function ProjectFormModal({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        <Select
+          label="Client"
+          required
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          error={errors.clientId}
+        >
+          <option value="">— Sélectionner un client —</option>
+          {clients.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.internalRef ? ` (${c.internalRef})` : ''}
+            </option>
+          ))}
+        </Select>
         <Select
           label="Responsable"
           required

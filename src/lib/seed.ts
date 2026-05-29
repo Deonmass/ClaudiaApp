@@ -8,6 +8,12 @@ export function createSeedData(): AppData {
   const agent3 = generateId()
   const agent4 = generateId()
 
+  const cli1 = generateId()
+  const cli2 = generateId()
+  const cli3 = generateId()
+  const cli4 = generateId()
+  const cli5 = generateId()
+
   const proj1 = generateId()
   const proj2 = generateId()
   const proj3 = generateId()
@@ -70,7 +76,7 @@ export function createSeedData(): AppData {
     ],
     clients: [
       {
-        id: generateId(),
+        id: cli1,
         name: 'Société Minière du Congo',
         phone: '+243 810 111 001',
         email: 'contact@smc.cd',
@@ -81,7 +87,7 @@ export function createSeedData(): AppData {
         active: true,
       },
       {
-        id: generateId(),
+        id: cli2,
         name: 'Bureau Kinshasa Logistics',
         phone: '+243 820 222 002',
         email: 'info@kinlog.cd',
@@ -91,7 +97,7 @@ export function createSeedData(): AppData {
         active: true,
       },
       {
-        id: generateId(),
+        id: cli3,
         name: 'Agro-RDC SARL',
         phone: '+243 830 333 003',
         email: 'direction@agro-rdc.cd',
@@ -100,7 +106,7 @@ export function createSeedData(): AppData {
         active: true,
       },
       {
-        id: generateId(),
+        id: cli4,
         name: 'Hôtel du Fleuve',
         phone: '+243 840 444 004',
         email: 'reservation@hotelfleuve.cd',
@@ -108,7 +114,7 @@ export function createSeedData(): AppData {
         active: true,
       },
       {
-        id: generateId(),
+        id: cli5,
         name: 'Transports Express RDC',
         phone: '+243 850 555 005',
         email: 'ops@texpress.cd',
@@ -124,6 +130,7 @@ export function createSeedData(): AppData {
         name: 'Rénovation entrepôt Gombe',
         code: `PROJ-${year}-0001`,
         description: 'Travaux de rénovation et sécurisation',
+        clientId: cli1,
         managerId: agent1,
         startDate: '2025-06-01',
         endDate: '2025-12-31',
@@ -136,6 +143,7 @@ export function createSeedData(): AppData {
         name: 'Installation réseau Lubumbashi',
         code: `PROJ-${year}-0002`,
         description: 'Déploiement fibre optique',
+        clientId: cli2,
         managerId: agent2,
         startDate: '2025-04-15',
         endDate: '2025-09-30',
@@ -148,6 +156,7 @@ export function createSeedData(): AppData {
         name: 'Audit logistique Matadi',
         code: `PROJ-${year}-0003`,
         description: 'Audit terminé avec succès',
+        clientId: cli3,
         managerId: agent1,
         startDate: '2025-01-10',
         endDate: '2025-03-30',

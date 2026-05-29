@@ -11,8 +11,10 @@ import { fr } from 'date-fns/locale'
 import { useEffect, useMemo, useState } from 'react'
 import { AttendanceCellModal } from '../components/attendance/AttendanceCellModal'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import { Select } from '../components/ui/Input'
 import { useData } from '../contexts/DataContext'
+import { useFilteredData, useYearFilter } from '../contexts/YearFilterContext'
 import {
   ATTENDANCE_STATUS_CELL,
   ATTENDANCE_STATUS_LETTER,
@@ -30,10 +32,12 @@ interface PendingCell {
 }
 
 export function AttendancePage() {
-  const { data, setAttendanceCell } = useData()
+  const { setAttendanceCell } = useData()
+  const { selectedYear } = useYearFilter()
+  const data = useFilteredData()
   const now = new Date()
   const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'))
-  const [year, setYear] = useState(String(now.getFullYear()))
+  const year = String(selectedYear)
   const [grid, setGrid] = useState<Record<string, Record<string, CellValue | null>>>({})
   const [pending, setPending] = useState<PendingCell | null>(null)
 
@@ -122,14 +126,10 @@ export function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-          Pointage mensuel
-        </h2>
-        <p className="text-sm text-slate-500">
-          Cliquez sur une case pour renseigner le statut — {monthLabel} {year}
-        </p>
-      </div>
+      <PageHeading
+        title="Pointage mensuel"
+        description={`Cliquez sur une case pour renseigner le statut — ${monthLabel} ${year}`}
+      />
 
       <Card>
         <div className="mb-4 flex flex-wrap items-end gap-4">
@@ -137,13 +137,6 @@ export function AttendancePage() {
             {months.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
-              </option>
-            ))}
-          </Select>
-          <Select label="Année" value={year} onChange={(e) => setYear(e.target.value)}>
-            {[2024, 2025, 2026].map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
               </option>
             ))}
           </Select>

@@ -4,8 +4,9 @@ import { Download } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import { Select } from '../components/ui/Input'
-import { useData } from '../contexts/DataContext'
+import { useFilteredData, useYearFilter } from '../contexts/YearFilterContext'
 import {
   ATTENDANCE_STATUS_CELL,
   ATTENDANCE_STATUS_LETTER,
@@ -15,10 +16,11 @@ import { downloadCsv } from '../lib/utils'
 import { ATTENDANCE_STATUS_LABELS } from '../types'
 
 export function AttendanceReportPage() {
-  const { data } = useData()
+  const { selectedYear } = useYearFilter()
+  const data = useFilteredData()
   const now = new Date()
   const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'))
-  const [year, setYear] = useState(String(now.getFullYear()))
+  const year = String(selectedYear)
 
   const prefix = `${year}-${month}`
 
@@ -104,21 +106,16 @@ export function AttendanceReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Rapport des présences
-          </h2>
-          <p className="text-sm text-slate-500">
-            Synthèse mensuelle par agent — {months.find((m) => m.value === month)?.label}{' '}
-            {year}
-          </p>
-        </div>
-        <Button variant="secondary" onClick={exportCsv}>
-          <Download className="h-4 w-4" />
-          Exporter CSV
-        </Button>
-      </div>
+      <PageHeading
+        title="Rapport des présences"
+        description={`Synthèse mensuelle par agent — ${months.find((m) => m.value === month)?.label} ${year}`}
+        actions={
+          <Button variant="secondary" onClick={exportCsv}>
+            <Download className="h-4 w-4" />
+            Exporter CSV
+          </Button>
+        }
+      />
 
       <Card>
         <div className="mb-4 flex flex-wrap gap-4">
@@ -126,13 +123,6 @@ export function AttendanceReportPage() {
             {months.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
-              </option>
-            ))}
-          </Select>
-          <Select label="Année" value={year} onChange={(e) => setYear(e.target.value)}>
-            {[2024, 2025, 2026].map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
               </option>
             ))}
           </Select>
