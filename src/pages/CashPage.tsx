@@ -5,9 +5,11 @@ import { useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
+import { useFilteredData } from '../contexts/YearFilterContext'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import type { Column } from '../components/ui/DataTable'
 import { DataTable } from '../components/ui/DataTable'
 import { Input, Select, Textarea } from '../components/ui/Input'
@@ -70,7 +72,8 @@ function CashStatCard({
 }
 
 export function CashPage() {
-  const { data, addCashMovement, deleteCashMovement } = useData()
+  const { addCashMovement, deleteCashMovement } = useData()
+  const data = useFilteredData()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const projectFilter = searchParams.get('project') ?? ''
@@ -207,11 +210,13 @@ export function CashPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="shrink-0">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Caisse</h2>
-          <p className="text-sm text-slate-500">Mouvements financiers par projet</p>
+        <div className="min-w-0 flex-1">
+          <PageHeading
+            title="Caisse"
+            description="Mouvements financiers par projet"
+          />
         </div>
-        <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 xl:justify-end">
+        <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 xl:justify-end xl:ml-auto">
           <div className="relative h-10 w-[min(220px,32vw)] shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input

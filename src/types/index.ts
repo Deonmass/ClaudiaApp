@@ -33,6 +33,9 @@ export interface Project {
   name: string
   code: string
   description?: string
+  clientId?: string
+  /** Nom du client (jointure ou enrichissement depuis `clients`) */
+  clientName?: string
   managerId: string
   startDate: string
   endDate?: string

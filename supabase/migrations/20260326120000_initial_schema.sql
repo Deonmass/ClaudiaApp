@@ -52,6 +52,7 @@ CREATE TABLE projects (
   name          text NOT NULL,
   code          text NOT NULL,
   description   text,
+  client_id     uuid REFERENCES clients(id) ON DELETE SET NULL,
   manager_id    uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   start_date    date NOT NULL,
   end_date      date,
@@ -64,6 +65,7 @@ CREATE TABLE projects (
   )
 );
 
+CREATE INDEX idx_projects_client_id ON projects(client_id);
 CREATE INDEX idx_projects_manager_id ON projects(manager_id);
 CREATE INDEX idx_projects_status ON projects(status);
 CREATE INDEX idx_projects_start_date ON projects(start_date);

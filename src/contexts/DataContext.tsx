@@ -21,6 +21,7 @@ import {
   updateUserDb,
   upsertAttendanceDb,
 } from '../lib/supabase-data'
+import { enrichProjectWithClient } from '../lib/supabase-mappers'
 import { generateId, projectCode } from '../lib/utils'
 import type {
   AppData,
@@ -36,6 +37,7 @@ import type {
 interface DataContextValue {
   data: AppData
   loading: boolean
+  refreshing: boolean
   error: string | null
   refresh: () => Promise<void>
   updateSettings: (settings: AppSettings) => void
@@ -87,10 +89,11 @@ function emptyData(): AppData {
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(emptyData)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    setLoading(true)
+    setRefreshing(true)
     setError(null)
     try {
       const next = await fetchAppData()
@@ -100,6 +103,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         e instanceof Error ? e.message : 'Impossible de charger les données Supabase.'
       setError(msg)
     } finally {
+      setRefreshing(false)
       setLoading(false)
     }
   }, [])
@@ -195,28 +199,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
           p.code.startsWith(`PROJ-${year}-`),
         ).length
         const now = new Date().toISOString()
-        const created = await insertProjectDb({
-          ...project,
-          id: generateId(),
-          code: projectCode(year, existing + 1),
-          createdAt: now,
-          updatedAt: now,
-        })
+        const created = enrichProjectWithClient(
+          await insertProjectDb({
+            ...project,
+            id: generateId(),
+            code: projectCode(year, existing + 1),
+            createdAt: now,
+            updatedAt: now,
+          }),
+          data.clients,
+        )
         setData((d) => ({ ...d, projects: [...d.projects, created] }))
       })
     },
-    [run, data.projects],
+    [run, data.projects, data.clients],
   )
 
   const updateProject = useCallback((id: string, patch: Partial<Project>) => {
     void run(async () => {
-      const updated = await updateProjectDb(id, patch)
+      const updated = enrichProjectWithClient(
+        await updateProjectDb(id, patch),
+        data.clients,
+      )
       setData((d) => ({
         ...d,
         projects: d.projects.map((p) => (p.id === id ? updated : p)),
       }))
     })
-  }, [run])
+  }, [run, data.clients])
 
   const archiveProject = useCallback((id: string) => {
     updateProject(id, { status: 'termine' as ProjectStatus })
@@ -347,6 +357,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       value={{
         data,
         loading,
+        refreshing,
         error,
         refresh,
         updateSettings,

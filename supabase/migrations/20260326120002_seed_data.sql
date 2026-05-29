@@ -7,6 +7,9 @@ DECLARE
   agent2_id  uuid := gen_random_uuid();
   agent3_id  uuid := gen_random_uuid();
   agent4_id  uuid := gen_random_uuid();
+  cli1_id    uuid := gen_random_uuid();
+  cli2_id    uuid := gen_random_uuid();
+  cli3_id    uuid := gen_random_uuid();
   proj1_id   uuid := gen_random_uuid();
   proj2_id   uuid := gen_random_uuid();
   proj3_id   uuid := gen_random_uuid();
@@ -19,17 +22,17 @@ BEGIN
     (agent3_id, 'Patrick Lumumba',     'patrick.lumumba@gestion-ops.cd', 'plumumba',   '+243 900 000 004', 'caissier',     'agent123', 'actif'),
     (agent4_id, 'Grace Tshisekedi',    'grace.tshisekedi@gestion-ops.cd','gtshisekedi','+243 900 000 005', 'agent',        'agent123', 'inactif');
 
-  INSERT INTO clients (name, phone, email, address, notes, internal_ref, active, created_at) VALUES
-    ('Société Minière du Congo', '+243 810 111 001', 'contact@smc.cd', 'Avenue du Commerce, Lubumbashi', 'Client prioritaire', 'CLI-001', true, '2025-01-15T10:00:00Z'),
-    ('Bureau Kinshasa Logistics', '+243 820 222 002', 'info@kinlog.cd', 'Gombe, Kinshasa', NULL, 'CLI-002', true, '2025-02-20T10:00:00Z'),
-    ('Agro-RDC SARL', '+243 830 333 003', 'direction@agro-rdc.cd', 'Matadi, Bas-Congo', NULL, NULL, true, '2025-03-10T10:00:00Z'),
-    ('Hôtel du Fleuve', '+243 840 444 004', 'reservation@hotelfleuve.cd', NULL, NULL, NULL, true, '2025-04-05T10:00:00Z'),
-    ('Transports Express RDC', '+243 850 555 005', 'ops@texpress.cd', 'Limete, Kinshasa', 'Contrat annuel', NULL, false, '2025-05-01T10:00:00Z');
+  INSERT INTO clients (id, name, phone, email, address, notes, internal_ref, active, created_at) VALUES
+    (cli1_id, 'Société Minière du Congo', '+243 810 111 001', 'contact@smc.cd', 'Avenue du Commerce, Lubumbashi', 'Client prioritaire', 'CLI-001', true, '2025-01-15T10:00:00Z'),
+    (cli2_id, 'Bureau Kinshasa Logistics', '+243 820 222 002', 'info@kinlog.cd', 'Gombe, Kinshasa', NULL, 'CLI-002', true, '2025-02-20T10:00:00Z'),
+    (cli3_id, 'Agro-RDC SARL', '+243 830 333 003', 'direction@agro-rdc.cd', 'Matadi, Bas-Congo', NULL, NULL, true, '2025-03-10T10:00:00Z'),
+    (gen_random_uuid(), 'Hôtel du Fleuve', '+243 840 444 004', 'reservation@hotelfleuve.cd', NULL, NULL, NULL, true, '2025-04-05T10:00:00Z'),
+    (gen_random_uuid(), 'Transports Express RDC', '+243 850 555 005', 'ops@texpress.cd', 'Limete, Kinshasa', 'Contrat annuel', NULL, false, '2025-05-01T10:00:00Z');
 
-  INSERT INTO projects (id, name, code, description, manager_id, start_date, end_date, status, created_at, updated_at) VALUES
-    (proj1_id, 'Rénovation entrepôt Gombe', format('PROJ-%s-0001', yr), 'Travaux de rénovation et sécurisation', agent1_id, '2025-06-01', '2025-12-31', 'actif', '2025-06-01T08:00:00Z', '2025-06-01T08:00:00Z'),
-    (proj2_id, 'Installation réseau Lubumbashi', format('PROJ-%s-0002', yr), 'Déploiement fibre optique', agent2_id, '2025-04-15', '2025-09-30', 'actif', '2025-04-15T08:00:00Z', '2025-04-15T08:00:00Z'),
-    (proj3_id, 'Audit logistique Matadi', format('PROJ-%s-0003', yr), 'Audit terminé avec succès', agent1_id, '2025-01-10', '2025-03-30', 'termine', '2025-01-10T08:00:00Z', '2025-03-30T08:00:00Z');
+  INSERT INTO projects (id, name, code, description, client_id, manager_id, start_date, end_date, status, created_at, updated_at) VALUES
+    (proj1_id, 'Rénovation entrepôt Gombe', format('PROJ-%s-0001', yr), 'Travaux de rénovation et sécurisation', cli1_id, agent1_id, '2025-06-01', '2025-12-31', 'actif', '2025-06-01T08:00:00Z', '2025-06-01T08:00:00Z'),
+    (proj2_id, 'Installation réseau Lubumbashi', format('PROJ-%s-0002', yr), 'Déploiement fibre optique', cli2_id, agent2_id, '2025-04-15', '2025-09-30', 'actif', '2025-04-15T08:00:00Z', '2025-04-15T08:00:00Z'),
+    (proj3_id, 'Audit logistique Matadi', format('PROJ-%s-0003', yr), 'Audit terminé avec succès', cli3_id, agent1_id, '2025-01-10', '2025-03-30', 'termine', '2025-01-10T08:00:00Z', '2025-03-30T08:00:00Z');
 
   INSERT INTO cash_movements (project_id, type, amount, description, date, agent_id, source, beneficiary) VALUES
     (proj1_id, 'entree', 15000, 'Acompte client', '2025-06-05', agent3_id, 'Société Minière du Congo', NULL),

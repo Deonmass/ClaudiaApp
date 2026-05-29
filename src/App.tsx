@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { MainLayout } from './components/layout/MainLayout'
 import { AuthProvider } from './contexts/AuthContext'
 import { DataProvider } from './contexts/DataContext'
+import { YearFilterProvider } from './contexts/YearFilterContext'
 import { LayoutProvider } from './contexts/LayoutContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AgentsPage } from './pages/AgentsPage'
@@ -19,8 +20,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <DataProvider>
-        <AuthProvider>
-          <LayoutProvider>
+        <YearFilterProvider>
+          <AuthProvider>
+            <LayoutProvider>
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
@@ -74,8 +76,9 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </BrowserRouter>
-          </LayoutProvider>
-        </AuthProvider>
+            </LayoutProvider>
+          </AuthProvider>
+        </YearFilterProvider>
       </DataProvider>
     </ThemeProvider>
   )

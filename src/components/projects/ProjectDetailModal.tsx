@@ -72,10 +72,17 @@ export function ProjectDetailModal({
   if (!project) return null
 
   const manager = data.users.find((u) => u.id === project.managerId)
+  const clientLabel =
+    project.clientName ??
+    (project.clientId
+      ? data.clients.find((c) => c.id === project.clientId)?.name
+      : undefined) ??
+    '—'
 
   const infoRows: [string, string][] = [
     ['Code', project.code],
     ['Nom', project.name],
+    ['Client', clientLabel],
     ['Statut', PROJECT_STATUS_LABELS[project.status]],
     ['Responsable', manager?.fullName ?? '—'],
     ['Rôle resp.', manager ? ROLE_LABELS[manager.role] : '—'],

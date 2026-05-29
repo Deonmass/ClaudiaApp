@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { PageHeading } from '../components/ui/PageHeading'
 import { Input } from '../components/ui/Input'
 import type { AppSettings } from '../types'
 
@@ -37,10 +38,10 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Paramètres</h2>
-        <p className="text-sm text-slate-500">Configuration générale de l&apos;application</p>
-      </div>
+      <PageHeading
+        title="Paramètres"
+        description="Configuration générale de l'application"
+      />
 
       {saved && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40">

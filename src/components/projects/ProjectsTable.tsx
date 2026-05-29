@@ -70,7 +70,8 @@ export function ProjectsTable({
       rows = rows.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.code.toLowerCase().includes(q),
+          p.code.toLowerCase().includes(q) ||
+          (p.clientName ?? '').toLowerCase().includes(q),
       )
     }
     if (sortKey) {
@@ -151,6 +152,9 @@ export function ProjectsTable({
               <SortHead label="Code" col="code" />
               <SortHead label="Nom" col="name" />
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
+                Client
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
                 Statut
               </th>
               <SortHead label="Entrées" col="entrees" />
@@ -167,7 +171,7 @@ export function ProjectsTable({
           <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-slate-500">
                   Aucun projet
                 </td>
               </tr>
@@ -193,6 +197,9 @@ export function ProjectsTable({
                     <span className="font-medium text-slate-900 dark:text-white">
                       {p.name}
                     </span>
+                  </Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-200">
+                    {p.clientName ?? '—'}
                   </Td>
                   <Td>
                     <Badge variant={statusVariant[p.status]}>
