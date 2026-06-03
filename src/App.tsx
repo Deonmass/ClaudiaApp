@@ -29,35 +29,47 @@ export default function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route element={<MainLayout />}>
                     <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
+                    <Route
+                      element={<ProtectedRoute module="dashboard" />}
+                    >
+                      <Route path="dashboard" element={<DashboardPage />} />
+                    </Route>
                     <Route path="projects">
                       <Route index element={<Navigate to="/projects/en-cours" replace />} />
-                      <Route path="en-cours" element={<ProjectsPage view="en-cours" />} />
-                      <Route path="cloture" element={<ProjectsPage view="cloture" />} />
-                    </Route>
-                    <Route path="clients" element={<ClientsPage />} />
-                    <Route
-                      element={
-                        <ProtectedRoute roles={['admin', 'superviseur']} />
-                      }
-                    >
-                      <Route path="agents" element={<AgentsPage />} />
-                    </Route>
-                    <Route path="cash" element={<CashPage />} />
-                    <Route path="attendance">
+                      <Route
+                        element={<ProtectedRoute module="projects" />}
+                      >
+                        <Route path="en-cours" element={<ProjectsPage view="en-cours" />} />
+                      </Route>
                       <Route
                         element={
-                          <ProtectedRoute
-                            roles={['admin', 'superviseur', 'agent']}
-                          />
+                          <ProtectedRoute module="projects" action="view_closed" />
                         }
                       >
-                        <Route index element={<AttendancePage />} />
+                        <Route path="cloture" element={<ProjectsPage view="cloture" />} />
                       </Route>
                     </Route>
                     <Route
+                      element={<ProtectedRoute module="clients" />}
+                    >
+                      <Route path="clients" element={<ClientsPage />} />
+                    </Route>
+                    <Route
+                      element={<ProtectedRoute module="agents" />}
+                    >
+                      <Route path="agents" element={<AgentsPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute module="cash" />}>
+                      <Route path="cash" element={<CashPage />} />
+                    </Route>
+                    <Route
+                      element={<ProtectedRoute module="attendance" />}
+                    >
+                      <Route path="attendance" element={<AttendancePage />} />
+                    </Route>
+                    <Route
                       element={
-                        <ProtectedRoute roles={['admin', 'superviseur']} />
+                        <ProtectedRoute module="attendance" action="view_report" />
                       }
                     >
                       <Route path="attendance/rapport" element={<AttendanceReportPage />} />
@@ -67,7 +79,7 @@ export default function App() {
                       element={<Navigate to="/attendance/rapport" replace />}
                     />
                     <Route
-                      element={<ProtectedRoute roles={['admin']} />}
+                      element={<ProtectedRoute module="settings" />}
                     >
                       <Route path="settings" element={<SettingsPage />} />
                     </Route>

@@ -3,6 +3,8 @@ export type UserStatus = 'actif' | 'inactif'
 export type ProjectStatus = 'actif' | 'termine' | 'en_pause'
 export type CashType = 'entree' | 'sortie'
 export type AttendanceStatus = 'present' | 'absent' | 'retard' | 'malade'
+import type { UserPermissions } from '../lib/permissions'
+
 export type Currency = 'USD'
 
 export interface User {
@@ -14,7 +16,11 @@ export interface User {
   role: UserRole
   password: string
   status: UserStatus
+  /** JSON des droits par module (colonne Supabase `permissions`) */
+  permissions?: UserPermissions | null
 }
+
+export type { PermissionAction, PermissionModuleId, UserPermissions } from '../lib/permissions'
 
 export interface Client {
   id: string

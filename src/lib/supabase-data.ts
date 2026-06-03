@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { serializePermissions } from './permissions'
 import {
   appDataFromRows,
   attendanceFromRow,
@@ -125,6 +126,11 @@ export async function insertUserDb(user: Omit<User, 'id'>): Promise<User> {
   return userFromRow(data)
 }
 
+export async function deleteUserDb(id: string): Promise<void> {
+  const { error } = await supabase.from('users').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function updateUserDb(id: string, patch: Partial<User>): Promise<User> {
   const row: Record<string, unknown> = {}
   if (patch.fullName !== undefined) row.full_name = patch.fullName
@@ -134,6 +140,9 @@ export async function updateUserDb(id: string, patch: Partial<User>): Promise<Us
   if (patch.role !== undefined) row.role = patch.role
   if (patch.password !== undefined) row.password = patch.password
   if (patch.status !== undefined) row.status = patch.status
+  if (patch.permissions !== undefined) {
+    row.permissions = serializePermissions(patch.permissions)
+  }
 
   const { data, error } = await supabase
     .from('users')

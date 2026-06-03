@@ -7,6 +7,7 @@ import type {
   Project,
   User,
 } from '../types'
+import { parsePermissions, serializePermissions } from './permissions'
 import { defaultSettings } from './utils'
 
 type UserRow = {
@@ -18,6 +19,7 @@ type UserRow = {
   role: User['role']
   password: string
   status: User['status']
+  permissions: string | null
 }
 
 type ClientRow = {
@@ -114,10 +116,14 @@ export function userFromRow(row: UserRow): User {
     role: row.role,
     password: row.password,
     status: row.status,
+    permissions: parsePermissions(row.permissions),
   }
 }
 
-export function userToRow(user: Partial<User> & Pick<User, 'fullName' | 'email' | 'username' | 'role' | 'password' | 'status'>) {
+export function userToRow(
+  user: Partial<User> &
+    Pick<User, 'fullName' | 'email' | 'username' | 'role' | 'password' | 'status'>,
+) {
   return {
     full_name: user.fullName,
     email: user.email,
@@ -126,6 +132,7 @@ export function userToRow(user: Partial<User> & Pick<User, 'fullName' | 'email' 
     role: user.role,
     password: user.password,
     status: user.status,
+    permissions: serializePermissions(user.permissions),
   }
 }
 

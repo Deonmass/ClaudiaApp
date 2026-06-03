@@ -7,6 +7,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import {
+  canAccessModule,
+  defaultPermissionsForRole,
+  type PermissionAction,
+  type PermissionModuleId,
+} from '../lib/permissions'
 import { loadAuthUserId, saveAuthUserId } from '../lib/storage'
 import type { User, UserRole } from '../types'
 import { useData } from './DataContext'
@@ -16,7 +22,10 @@ interface AuthContextValue {
   login: (username: string, password: string) => string | null
   logout: () => void
   isAdmin: boolean
+  /** Compatibilité rôles (si pas de permissions explicites) */
   canAccess: (roles?: UserRole[]) => boolean
+  canAccessModule: (moduleId: PermissionModuleId) => boolean
+  canPerform: (moduleId: PermissionModuleId, action: PermissionAction) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -67,15 +76,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canAccess = useCallback(
     (roles?: UserRole[]) => {
       if (!user) return false
-      if (!roles || roles.length === 0) return true
       if (user.role === 'admin') return true
+      if (!roles || roles.length === 0) return true
+      if (user.permissions && Object.keys(user.permissions).length > 0) {
+        return roles.includes(user.role)
+      }
       return roles.includes(user.role)
     },
     [user],
   )
 
+  const canAccessModuleFn = useCallback(
+    (moduleId: PermissionModuleId) => canAccessModule(user, moduleId),
+    [user],
+  )
+
+  const canPerform = useCallback(
+    (moduleId: PermissionModuleId, action: PermissionAction) => {
+      if (!user) return false
+      if (user.role === 'admin') return true
+      const perms =
+        user.permissions && Object.keys(user.permissions).length > 0
+          ? user.permissions
+          : defaultPermissionsForRole(user.role)
+      return Boolean(perms[moduleId]?.[action])
+    },
+    [user],
+  )
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, canAccess }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        isAdmin,
+        canAccess,
+        canAccessModule: canAccessModuleFn,
+        canPerform,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

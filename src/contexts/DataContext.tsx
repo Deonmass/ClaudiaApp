@@ -9,6 +9,7 @@ import {
 import {
   deleteAttendanceCellDb,
   deleteCashMovementDb,
+  deleteUserDb,
   fetchAppData,
   insertCashMovementDb,
   insertClientDb,
@@ -22,6 +23,10 @@ import {
   upsertAttendanceDb,
 } from '../lib/supabase-data'
 import { enrichProjectWithClient } from '../lib/supabase-mappers'
+import {
+  formatSupabaseError,
+  isSupabaseSchemaError,
+} from '../lib/supabase-errors'
 import { generateId, projectCode } from '../lib/utils'
 import type {
   AppData,
@@ -40,30 +45,31 @@ interface DataContextValue {
   refreshing: boolean
   error: string | null
   refresh: () => Promise<void>
-  updateSettings: (settings: AppSettings) => void
-  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'active'>) => void
-  updateClient: (id: string, patch: Partial<Client>) => void
-  deleteClient: (id: string) => void
-  addUser: (user: Omit<User, 'id'>) => void
-  updateUser: (id: string, patch: Partial<User>) => void
-  deleteUser: (id: string) => void
+  updateSettings: (settings: AppSettings) => Promise<void>
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'active'>) => Promise<void>
+  updateClient: (id: string, patch: Partial<Client>) => Promise<void>
+  deleteClient: (id: string) => Promise<void>
+  addUser: (user: Omit<User, 'id'>) => Promise<User>
+  updateUser: (id: string, patch: Partial<User>) => Promise<User>
+  deactivateUser: (id: string) => Promise<void>
+  deleteUser: (id: string) => Promise<void>
   addProject: (
     project: Omit<Project, 'id' | 'code' | 'createdAt' | 'updatedAt'>,
-  ) => void
-  updateProject: (id: string, patch: Partial<Project>) => void
-  archiveProject: (id: string) => void
-  addCashMovement: (movement: Omit<CashMovement, 'id'>) => void
-  updateCashMovement: (id: string, patch: Partial<CashMovement>) => void
-  deleteCashMovement: (id: string) => void
+  ) => Promise<void>
+  updateProject: (id: string, patch: Partial<Project>) => Promise<void>
+  archiveProject: (id: string) => Promise<void>
+  addCashMovement: (movement: Omit<CashMovement, 'id'>) => Promise<void>
+  updateCashMovement: (id: string, patch: Partial<CashMovement>) => Promise<void>
+  deleteCashMovement: (id: string) => Promise<void>
   upsertAttendance: (
     date: string,
     records: Omit<AttendanceRecord, 'id'>[],
-  ) => void
+  ) => Promise<void>
   setAttendanceCell: (
     agentId: string,
     date: string,
     payload: { status: AttendanceRecord['status']; notes?: string } | null,
-  ) => void
+  ) => Promise<void>
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
@@ -99,9 +105,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const next = await fetchAppData()
       setData(next)
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : 'Impossible de charger les données Supabase.'
-      setError(msg)
+      setError(formatSupabaseError(e))
     } finally {
       setRefreshing(false)
       setLoading(false)
@@ -112,210 +116,180 @@ export function DataProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
-  const run = useCallback(
-    async (fn: () => Promise<void>) => {
-      try {
-        await fn()
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Erreur Supabase'
-        setError(msg)
-        throw e
-      }
+  const updateSettings = useCallback(async (settings: AppSettings) => {
+    const saved = await updateSettingsDb(settings)
+    setData((d) => ({ ...d, settings: saved }))
+  }, [])
+
+  const addClient = useCallback(
+    async (client: Omit<Client, 'id' | 'createdAt' | 'active'>) => {
+      const created = await insertClientDb(client)
+      setData((d) => ({ ...d, clients: [...d.clients, created] }))
     },
     [],
   )
 
-  const updateSettings = useCallback((settings: AppSettings) => {
-    void run(async () => {
-      const saved = await updateSettingsDb(settings)
-      setData((d) => ({ ...d, settings: saved }))
-    })
-  }, [run])
+  const updateClient = useCallback(async (id: string, patch: Partial<Client>) => {
+    const updated = await updateClientDb(id, patch)
+    setData((d) => ({
+      ...d,
+      clients: d.clients.map((c) => (c.id === id ? updated : c)),
+    }))
+  }, [])
 
-  const addClient = useCallback(
-    (client: Omit<Client, 'id' | 'createdAt' | 'active'>) => {
-      void run(async () => {
-        const created = await insertClientDb(client)
-        setData((d) => ({ ...d, clients: [...d.clients, created] }))
-      })
-    },
-    [run],
-  )
+  const deleteClient = useCallback(async (id: string) => {
+    const updated = await updateClientDb(id, { active: false })
+    setData((d) => ({
+      ...d,
+      clients: d.clients.map((c) => (c.id === id ? updated : c)),
+    }))
+  }, [])
 
-  const updateClient = useCallback((id: string, patch: Partial<Client>) => {
-    void run(async () => {
-      const updated = await updateClientDb(id, patch)
-      setData((d) => ({
-        ...d,
-        clients: d.clients.map((c) => (c.id === id ? updated : c)),
-      }))
-    })
-  }, [run])
+  const addUser = useCallback(async (user: Omit<User, 'id'>) => {
+    const created = await insertUserDb(user)
+    setData((d) => ({ ...d, users: [...d.users, created] }))
+    return created
+  }, [])
 
-  const deleteClient = useCallback((id: string) => {
-    void run(async () => {
-      const updated = await updateClientDb(id, { active: false })
-      setData((d) => ({
-        ...d,
-        clients: d.clients.map((c) => (c.id === id ? updated : c)),
-      }))
-    })
-  }, [run])
+  const updateUser = useCallback(async (id: string, patch: Partial<User>) => {
+    const updated = await updateUserDb(id, patch)
+    setData((d) => ({
+      ...d,
+      users: d.users.map((u) => (u.id === id ? updated : u)),
+    }))
+    return updated
+  }, [])
 
-  const addUser = useCallback((user: Omit<User, 'id'>) => {
-    void run(async () => {
-      const created = await insertUserDb(user)
-      setData((d) => ({ ...d, users: [...d.users, created] }))
-    })
-  }, [run])
+  const deactivateUser = useCallback(async (id: string) => {
+    const updated = await updateUserDb(id, { status: 'inactif' })
+    setData((d) => ({
+      ...d,
+      users: d.users.map((u) => (u.id === id ? updated : u)),
+    }))
+  }, [])
 
-  const updateUser = useCallback((id: string, patch: Partial<User>) => {
-    void run(async () => {
-      const updated = await updateUserDb(id, patch)
-      setData((d) => ({
-        ...d,
-        users: d.users.map((u) => (u.id === id ? updated : u)),
-      }))
-    })
-  }, [run])
-
-  const deleteUser = useCallback((id: string) => {
-    void run(async () => {
-      const updated = await updateUserDb(id, { status: 'inactif' })
-      setData((d) => ({
-        ...d,
-        users: d.users.map((u) => (u.id === id ? updated : u)),
-      }))
-    })
-  }, [run])
+  const deleteUser = useCallback(async (id: string) => {
+    await deleteUserDb(id)
+    setData((d) => ({
+      ...d,
+      users: d.users.filter((u) => u.id !== id),
+    }))
+  }, [])
 
   const addProject = useCallback(
-    (
+    async (
       project: Omit<Project, 'id' | 'code' | 'createdAt' | 'updatedAt'>,
     ) => {
-      void run(async () => {
-        const year = new Date().getFullYear()
-        const existing = data.projects.filter((p) =>
-          p.code.startsWith(`PROJ-${year}-`),
-        ).length
-        const now = new Date().toISOString()
-        const created = enrichProjectWithClient(
-          await insertProjectDb({
-            ...project,
-            id: generateId(),
-            code: projectCode(year, existing + 1),
-            createdAt: now,
-            updatedAt: now,
-          }),
-          data.clients,
-        )
-        setData((d) => ({ ...d, projects: [...d.projects, created] }))
-      })
-    },
-    [run, data.projects, data.clients],
-  )
-
-  const updateProject = useCallback((id: string, patch: Partial<Project>) => {
-    void run(async () => {
-      const updated = enrichProjectWithClient(
-        await updateProjectDb(id, patch),
+      const year = new Date().getFullYear()
+      const existing = data.projects.filter((p) =>
+        p.code.startsWith(`PROJ-${year}-`),
+      ).length
+      const now = new Date().toISOString()
+      const created = enrichProjectWithClient(
+        await insertProjectDb({
+          ...project,
+          id: generateId(),
+          code: projectCode(year, existing + 1),
+          createdAt: now,
+          updatedAt: now,
+        }),
         data.clients,
       )
-      setData((d) => ({
-        ...d,
-        projects: d.projects.map((p) => (p.id === id ? updated : p)),
-      }))
-    })
-  }, [run, data.clients])
+      setData((d) => ({ ...d, projects: [...d.projects, created] }))
+    },
+    [data.projects, data.clients],
+  )
 
-  const archiveProject = useCallback((id: string) => {
-    updateProject(id, { status: 'termine' as ProjectStatus })
-  }, [updateProject])
+  const updateProject = useCallback(async (id: string, patch: Partial<Project>) => {
+    const updated = enrichProjectWithClient(
+      await updateProjectDb(id, patch),
+      data.clients,
+    )
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? updated : p)),
+    }))
+  }, [data.clients])
 
-  const addCashMovement = useCallback((movement: Omit<CashMovement, 'id'>) => {
-    void run(async () => {
-      const created = await insertCashMovementDb(movement)
-      setData((d) => ({
-        ...d,
-        cashMovements: [...d.cashMovements, created],
-      }))
-    })
-  }, [run])
+  const archiveProject = useCallback(
+    (id: string) => updateProject(id, { status: 'termine' as ProjectStatus }),
+    [updateProject],
+  )
 
-  const updateCashMovement = useCallback((id: string, patch: Partial<CashMovement>) => {
-    void run(async () => {
-      const updated = await updateCashMovementDb(id, patch)
-      setData((d) => ({
-        ...d,
-        cashMovements: d.cashMovements.map((m) => (m.id === id ? updated : m)),
-      }))
-    })
-  }, [run])
+  const addCashMovement = useCallback(async (movement: Omit<CashMovement, 'id'>) => {
+    const created = await insertCashMovementDb(movement)
+    setData((d) => ({
+      ...d,
+      cashMovements: [...d.cashMovements, created],
+    }))
+  }, [])
 
-  const deleteCashMovement = useCallback((id: string) => {
-    void run(async () => {
-      await deleteCashMovementDb(id)
-      setData((d) => ({
-        ...d,
-        cashMovements: d.cashMovements.filter((m) => m.id !== id),
-      }))
-    })
-  }, [run])
+  const updateCashMovement = useCallback(async (id: string, patch: Partial<CashMovement>) => {
+    const updated = await updateCashMovementDb(id, patch)
+    setData((d) => ({
+      ...d,
+      cashMovements: d.cashMovements.map((m) => (m.id === id ? updated : m)),
+    }))
+  }, [])
+
+  const deleteCashMovement = useCallback(async (id: string) => {
+    await deleteCashMovementDb(id)
+    setData((d) => ({
+      ...d,
+      cashMovements: d.cashMovements.filter((m) => m.id !== id),
+    }))
+  }, [])
 
   const upsertAttendance = useCallback(
-    (date: string, records: Omit<AttendanceRecord, 'id'>[]) => {
-      void run(async () => {
-        const withIds = records.map((r) => ({
-          ...r,
-          id:
-            data.attendance.find(
-              (a) => a.date === date && a.agentId === r.agentId,
-            )?.id ?? generateId(),
-        }))
-        const saved = await upsertAttendanceDb(withIds)
-        const others = data.attendance.filter((a) => a.date !== date)
-        setData((d) => ({ ...d, attendance: [...others, ...saved] }))
-      })
+    async (date: string, records: Omit<AttendanceRecord, 'id'>[]) => {
+      const withIds = records.map((r) => ({
+        ...r,
+        id:
+          data.attendance.find(
+            (a) => a.date === date && a.agentId === r.agentId,
+          )?.id ?? generateId(),
+      }))
+      const saved = await upsertAttendanceDb(withIds)
+      const others = data.attendance.filter((a) => a.date !== date)
+      setData((d) => ({ ...d, attendance: [...others, ...saved] }))
     },
-    [run, data.attendance],
+    [data.attendance],
   )
 
   const setAttendanceCell = useCallback(
-    (
+    async (
       agentId: string,
       date: string,
       payload: { status: AttendanceRecord['status']; notes?: string } | null,
     ) => {
-      void run(async () => {
-        if (!payload) {
-          await deleteAttendanceCellDb(agentId, date)
-          setData((d) => ({
-            ...d,
-            attendance: d.attendance.filter(
-              (a) => !(a.agentId === agentId && a.date === date),
-            ),
-          }))
-          return
-        }
-        const existing = data.attendance.find(
-          (a) => a.agentId === agentId && a.date === date,
-        )
-        const record: AttendanceRecord = {
-          id: existing?.id ?? generateId(),
-          agentId,
-          date,
-          status: payload.status,
-          notes: payload.notes?.trim() || undefined,
-          projectId: existing?.projectId,
-        }
-        const [saved] = await upsertAttendanceDb([record])
-        const others = data.attendance.filter(
-          (a) => !(a.agentId === agentId && a.date === date),
-        )
-        setData((d) => ({ ...d, attendance: [...others, saved] }))
-      })
+      if (!payload) {
+        await deleteAttendanceCellDb(agentId, date)
+        setData((d) => ({
+          ...d,
+          attendance: d.attendance.filter(
+            (a) => !(a.agentId === agentId && a.date === date),
+          ),
+        }))
+        return
+      }
+      const existing = data.attendance.find(
+        (a) => a.agentId === agentId && a.date === date,
+      )
+      const record: AttendanceRecord = {
+        id: existing?.id ?? generateId(),
+        agentId,
+        date,
+        status: payload.status,
+        notes: payload.notes?.trim() || undefined,
+        projectId: existing?.projectId,
+      }
+      const [saved] = await upsertAttendanceDb([record])
+      const others = data.attendance.filter(
+        (a) => !(a.agentId === agentId && a.date === date),
+      )
+      setData((d) => ({ ...d, attendance: [...others, saved] }))
     },
-    [run, data.attendance],
+    [data.attendance],
   )
 
   if (loading) {
@@ -330,17 +304,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center dark:bg-slate-950">
         <p className="max-w-lg text-red-600 dark:text-red-400">{error}</p>
-        <p className="max-w-lg text-sm text-slate-600 dark:text-slate-400">
-          Exécutez le schéma SQL dans Supabase (fichier{' '}
-          <code className="rounded bg-slate-200 px-1 dark:bg-slate-800">
-            supabase/schema-complet.sql
-          </code>
-          ) ou lancez{' '}
-          <code className="rounded bg-slate-200 px-1 dark:bg-slate-800">
-            npm run db:migrate
-          </code>{' '}
-          après avoir ajouté <code>SUPABASE_DB_PASSWORD</code> dans <code>.env</code>.
-        </p>
+        {error && isSupabaseSchemaError(error) ? (
+          <p className="max-w-lg text-sm text-slate-600 dark:text-slate-400">
+            Exécutez le schéma SQL dans Supabase (fichier{' '}
+            <code className="rounded bg-slate-200 px-1 dark:bg-slate-800">
+              supabase/schema-complet.sql
+            </code>
+            ) ou lancez{' '}
+            <code className="rounded bg-slate-200 px-1 dark:bg-slate-800">
+              npm run db:migrate
+            </code>{' '}
+            après avoir ajouté <code>SUPABASE_DB_PASSWORD</code> dans{' '}
+            <code>.env</code>.
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={() => void refresh()}
@@ -366,6 +343,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteClient,
         addUser,
         updateUser,
+        deactivateUser,
         deleteUser,
         addProject,
         updateProject,
