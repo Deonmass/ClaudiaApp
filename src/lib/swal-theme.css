@@ -1,0 +1,79 @@
+/**
+ * SweetAlert2 — aligné sur le thème Gestion Ops (html.dark)
+ */
+
+/* —— Mode clair : fonds opaques, contraste renforcé —— */
+html:not(.dark) div:where(.swal2-container).swal2-backdrop-show {
+  --swal2-backdrop: rgba(15, 23, 42, 0.58);
+}
+
+html:not(.dark) [data-swal2-theme='light'] {
+  --swal2-background: #ffffff;
+  --swal2-color: #0f172a;
+  --swal2-border: 1px solid #cbd5e1;
+  --swal2-border-radius: 0.75rem;
+  --swal2-confirm-button-background-color: #0f172a;
+  --swal2-confirm-button-color: #ffffff;
+  --swal2-cancel-button-background-color: #64748b;
+  --swal2-cancel-button-color: #ffffff;
+  --swal2-deny-button-background-color: #dc2626;
+  --swal2-timer-progress-bar-background: rgba(15, 23, 42, 0.35);
+  --swal2-close-button-color: #94a3b8;
+}
+
+html:not(.dark) [data-swal2-theme='light'] div:where(.swal2-popup) {
+  box-shadow:
+    0 25px 50px -12px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+html:not(.dark) [data-swal2-theme='light'] h2:where(.swal2-title) {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+html:not(.dark) [data-swal2-theme='light'] div:where(.swal2-html-container) {
+  color: #475569;
+}
+
+/* —— Mode sombre —— */
+html.dark div:where(.swal2-container).swal2-backdrop-show {
+  --swal2-backdrop: rgba(0, 0, 0, 0.68);
+}
+
+html.dark [data-swal2-theme='dark'] {
+  --swal2-dark-theme-black: #0f172a;
+  --swal2-dark-theme-white: #f1f5f9;
+  --swal2-background: #0f172a;
+  --swal2-color: #f1f5f9;
+  --swal2-border: 1px solid #334155;
+  --swal2-border-radius: 0.75rem;
+  --swal2-footer-border-color: #334155;
+  --swal2-confirm-button-background-color: #f1f5f9;
+  --swal2-confirm-button-color: #0f172a;
+  --swal2-cancel-button-background-color: #475569;
+  --swal2-cancel-button-color: #f8fafc;
+  --swal2-deny-button-background-color: #dc2626;
+  --swal2-timer-progress-bar-background: rgba(241, 245, 249, 0.45);
+  --swal2-close-button-color: #94a3b8;
+}
+
+html.dark [data-swal2-theme='dark'] div:where(.swal2-popup) {
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(51, 65, 85, 0.8);
+}
+
+html.dark [data-swal2-theme='dark'] h2:where(.swal2-title) {
+  color: #f8fafc;
+}
+
+html.dark [data-swal2-theme='dark'] div:where(.swal2-html-container) {
+  color: #cbd5e1;
+}
+
+/* Confirmation destructive : bouton rouge (clair et sombre) */
+.gestion-ops-swal--danger.swal2-popup button:where(.swal2-confirm) {
+  --swal2-confirm-button-background-color: #dc2626;
+  --swal2-confirm-button-color: #ffffff;
+}

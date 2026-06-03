@@ -16,17 +16,20 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useData } from '../../contexts/DataContext'
 import { useLayout } from '../../contexts/LayoutContext'
+import type { PermissionModuleId } from '../../lib/permissions'
 import type { UserRole } from '../../types'
 
 interface NavChild {
   to: string
   label: string
   roles?: UserRole[]
+  module?: PermissionModuleId
+  permission?: import('../../lib/permissions').PermissionAction
   match?: (path: string) => boolean
 }
 
 interface NavItem {
-  id: string
+  id: PermissionModuleId
   to?: string
   label: string
   icon: typeof LayoutDashboard
@@ -42,70 +45,75 @@ const navItems: NavItem[] = [
     to: '/dashboard',
     label: 'Tableau de bord',
     icon: LayoutDashboard,
-    accent: 'text-blue-600 dark:text-blue-400',
+    accent: 'text-blue-400',
     bar: 'bg-blue-500',
   },
   {
     id: 'projects',
     label: 'Projets',
     icon: FolderKanban,
-    accent: 'text-indigo-600 dark:text-indigo-400',
+    accent: 'text-indigo-400',
     bar: 'bg-indigo-500',
     children: [
       {
         to: '/projects/en-cours',
         label: 'En cours',
+        module: 'projects',
+        permission: 'view',
         match: (p) => p.startsWith('/projects/en-cours') || p === '/projects',
       },
       {
         to: '/projects/cloture',
         label: 'Clôturés',
+        module: 'projects',
+        permission: 'view_closed',
         match: (p) => p.startsWith('/projects/cloture'),
       },
     ],
-  },
-  {
-    id: 'clients',
-    to: '/clients',
-    label: 'Clients',
-    icon: Users,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    bar: 'bg-emerald-500',
-  },
-  {
-    id: 'agents',
-    to: '/agents',
-    label: 'Agents',
-    icon: UserCog,
-    roles: ['admin', 'superviseur'],
-    accent: 'text-purple-600 dark:text-purple-400',
-    bar: 'bg-purple-500',
   },
   {
     id: 'cash',
     to: '/cash',
     label: 'Caisse',
     icon: Banknote,
-    accent: 'text-amber-600 dark:text-amber-400',
+    accent: 'text-amber-400',
     bar: 'bg-amber-500',
+  },
+  {
+    id: 'clients',
+    to: '/clients',
+    label: 'Clients',
+    icon: Users,
+    accent: 'text-emerald-400',
+    bar: 'bg-emerald-500',
+  },
+  {
+    id: 'agents',
+    to: '/agents',
+    label: 'Utilisateurs',
+    icon: UserCog,
+    accent: 'text-purple-400',
+    bar: 'bg-purple-500',
   },
   {
     id: 'attendance',
     label: 'Pointage',
     icon: CalendarCheck,
-    accent: 'text-cyan-600 dark:text-cyan-400',
+    accent: 'text-cyan-400',
     bar: 'bg-cyan-500',
     children: [
       {
         to: '/attendance',
         label: 'Grille mensuelle',
-        roles: ['admin', 'superviseur', 'agent'],
+        module: 'attendance',
+        permission: 'view',
         match: (p) => p === '/attendance',
       },
       {
         to: '/attendance/rapport',
         label: 'Rapport des présences',
-        roles: ['admin', 'superviseur'],
+        module: 'attendance',
+        permission: 'view_report',
         match: (p) => p.startsWith('/attendance/rapport'),
       },
     ],
@@ -115,8 +123,7 @@ const navItems: NavItem[] = [
     to: '/settings',
     label: 'Paramètres',
     icon: Settings,
-    roles: ['admin'],
-    accent: 'text-slate-600 dark:text-slate-400',
+    accent: 'text-slate-400',
     bar: 'bg-slate-500',
   },
 ]
@@ -139,10 +146,7 @@ const navLinkBase =
   'bg-transparent shadow-none outline-none ring-0 hover:bg-transparent focus:bg-transparent focus-visible:ring-2 focus-visible:ring-primary-500/40 active:bg-transparent'
 
 function navLinkInactive() {
-  return clsx(
-    navLinkBase,
-    'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
-  )
+  return clsx(navLinkBase, 'text-slate-400 hover:text-slate-200')
 }
 
 function navLinkActive(accent: string) {
@@ -151,7 +155,16 @@ function navLinkActive(accent: string) {
 
 export function Sidebar() {
   const { sidebarExpanded, toggleSidebar, mobileOpen, setMobileOpen } = useLayout()
-  const { canAccess } = useAuth()
+  const { canAccessModule, canPerform, isAdmin } = useAuth()
+
+  const childVisible = (child: NavChild) => {
+    if (isAdmin) return true
+    if (child.module && child.permission) {
+      return canPerform(child.module, child.permission)
+    }
+    if (child.module) return canAccessModule(child.module)
+    return true
+  }
   const { data } = useData()
   const location = useLocation()
   const logoSrc = data.settings.logo || '/logo.svg'
@@ -170,10 +183,11 @@ export function Sidebar() {
   }, [location.pathname])
 
   const visible = navItems.filter((item) => {
+    if (isAdmin) return true
     if (item.children) {
-      return item.children.some((c) => canAccess(c.roles ?? item.roles))
+      return item.children.some((c) => childVisible(c))
     }
-    return canAccess(item.roles)
+    return canAccessModule(item.id)
   })
 
   const padding = sidebarExpanded ? 'pl-4 pr-3' : 'justify-center px-0'
@@ -189,14 +203,14 @@ export function Sidebar() {
       )}
       <aside
         className={clsx(
-          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-900',
+          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-slate-800 bg-slate-900 text-slate-100 transition-all duration-300',
           sidebarExpanded ? 'w-60' : 'w-[4.5rem]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         <div
           className={clsx(
-            'border-b border-slate-100 px-3 py-4 dark:border-slate-800',
+            'border-b border-slate-800 px-3 py-4',
             sidebarExpanded ? '' : 'flex flex-col items-center',
           )}
         >
@@ -215,10 +229,10 @@ export function Sidebar() {
               <img
                 src={logoSrc}
                 alt="Logo"
-                className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-200 dark:ring-slate-700"
+                className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-700"
               />
               {sidebarExpanded && (
-                <span className="text-sm font-bold leading-tight text-primary-700 dark:text-primary-400">
+                <span className="text-sm font-bold leading-tight text-primary-400">
                   Gestion Ops
                 </span>
               )}
@@ -227,7 +241,7 @@ export function Sidebar() {
               type="button"
               onClick={toggleSidebar}
               className={clsx(
-                'hidden rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:block dark:hover:bg-slate-800',
+                'hidden rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 lg:block',
                 !sidebarExpanded && 'mt-2',
               )}
               aria-label={sidebarExpanded ? 'Réduire le menu' : 'Étendre le menu'}
@@ -244,9 +258,7 @@ export function Sidebar() {
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [&_a]:bg-transparent [&_a[aria-current=page]]:bg-transparent">
           {visible.map((item) => {
             if (item.children) {
-              const childItems = item.children.filter((c) =>
-                canAccess(c.roles ?? item.roles),
-              )
+              const childItems = item.children.filter((c) => childVisible(c))
               const groupActive = childItems.some((c) =>
                 c.match ? c.match(location.pathname) : location.pathname === c.to,
               )
@@ -259,7 +271,7 @@ export function Sidebar() {
                       'group relative flex w-full items-center rounded-lg bg-transparent text-sm font-medium transition-colors',
                       groupActive
                         ? item.accent
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
+                        : 'text-slate-400 hover:text-slate-200',
                     )}
                   >
                     <NavBar bar={item.bar} active={groupActive} />
@@ -318,7 +330,7 @@ export function Sidebar() {
                             [item.id]: g[item.id] === false,
                           }))
                         }}
-                        className="mr-2 shrink-0 rounded-md p-1 text-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700"
+                        className="mr-2 shrink-0 rounded-md p-1 text-slate-500 hover:bg-slate-700"
                         aria-label={isOpen ? 'Replier le sous-menu' : 'Déplier le sous-menu'}
                       >
                         <ChevronDown
@@ -331,7 +343,7 @@ export function Sidebar() {
                     )}
                   </div>
                   {sidebarExpanded && isOpen && (
-                    <div className="relative z-10 ml-3 mt-0.5 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
+                    <div className="relative z-10 ml-3 mt-0.5 space-y-0.5 border-l border-slate-700 pl-2">
                       {childItems.map((child) => (
                         <NavLink
                           key={child.to}

@@ -7,7 +7,7 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: ReactNode
-  size?: 'md' | 'lg' | 'xl'
+  size?: 'md' | 'lg' | 'xl' | '2xl'
   /** Au-dessus des modals plein écran (ex. détail projet) */
   elevated?: boolean
 }
@@ -22,7 +22,12 @@ export function Modal({
 }: ModalProps) {
   if (!open) return null
 
-  const widths = { md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' }
+  const widths = {
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-2xl',
+    '2xl': 'max-w-4xl',
+  }
   const z = elevated ? 'z-[70]' : 'z-50'
 
   return (

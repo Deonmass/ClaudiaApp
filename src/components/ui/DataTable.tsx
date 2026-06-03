@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { ChevronDown, ChevronUp, Search } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { Button } from './Button'
 
 export interface Column<T> {
@@ -18,6 +18,7 @@ interface DataTableProps<T> {
   searchPlaceholder?: string
   pageSize?: number
   actions?: (row: T) => ReactNode
+  onRowContextMenu?: (e: MouseEvent, row: T) => void
   emptyMessage?: string
 }
 
@@ -28,6 +29,7 @@ export function DataTable<T extends { id: string }>({
   searchPlaceholder = 'Rechercher…',
   pageSize = 10,
   actions,
+  onRowContextMenu,
   emptyMessage = 'Aucune donnée',
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
@@ -133,7 +135,15 @@ export function DataTable<T extends { id: string }>({
               paged.map((row) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  className={clsx(
+                    'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                    onRowContextMenu && 'cursor-context-menu',
+                  )}
+                  onContextMenu={
+                    onRowContextMenu
+                      ? (e) => onRowContextMenu(e, row)
+                      : undefined
+                  }
                 >
                   {columns.map((col) => (
                     <td

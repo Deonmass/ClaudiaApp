@@ -1,10 +1,11 @@
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Archive, FileDown, Pencil, Plus, Trash2, X } from 'lucide-react'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useData } from '../../contexts/DataContext'
-import { exportProjectPdf } from '../../lib/exportProjectPdf'
+import { downloadElementPdf } from '../../lib/captureElement'
+import { showErrorAlert } from '../../lib/swal'
 import {
   formatDate,
   formatMoney,
@@ -43,6 +44,8 @@ export function ProjectDetailModal({
     y: number
     movement: CashMovement
   } | null>(null)
+  const [capturing, setCapturing] = useState(false)
+  const modalPanelRef = useRef<HTMLDivElement>(null)
 
   const project = useMemo(() => {
     if (!projectProp) return null
@@ -107,9 +110,21 @@ export function ProjectDetailModal({
     closeMovementForm()
   }
 
-  const handleExportPdf = () => {
-    const projectMovements = data.cashMovements.filter((m) => m.projectId === project.id)
-    exportProjectPdf(project, projectMovements, manager)
+  const handleDownloadPdf = async () => {
+    const el = modalPanelRef.current
+    if (!el || capturing) return
+    const backdrop = el.parentElement?.querySelector<HTMLElement>('[data-capture-backdrop]')
+    setCapturing(true)
+    if (backdrop) backdrop.style.visibility = 'hidden'
+    try {
+      await downloadElementPdf(el, project.name)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erreur inconnue'
+      await showErrorAlert('Export PDF impossible', msg)
+    } finally {
+      if (backdrop) backdrop.style.visibility = ''
+      setCapturing(false)
+    }
   }
 
   const handleArchive = () => {
@@ -144,28 +159,30 @@ export function ProjectDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-1 sm:items-center sm:p-3">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       <div
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        data-capture-backdrop
+        onClick={onClose}
+      />
+      <div
+        ref={modalPanelRef}
+        data-project-modal-capture
         className="relative flex h-[94vh] w-full max-w-[min(96vw,1440px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         role="dialog"
         aria-modal
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-6">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              {project.name}
-            </h2>
-            <code className="text-xs text-primary-600 dark:text-primary-400">
-              {project.code}
-            </code>
-          </div>
-          <div className="flex items-center gap-1">
+          <h2 className="min-w-0 flex-1 truncate pr-3 text-lg font-bold text-slate-900 dark:text-white">
+            {project.name}
+          </h2>
+          <div className="flex shrink-0 items-center gap-1" data-capture-hide>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleExportPdf}
-              aria-label="Exporter en PDF"
-              title="Exporter en PDF"
+              disabled={capturing}
+              onClick={() => void handleDownloadPdf()}
+              aria-label="Télécharger le PDF"
+              title="Télécharger le rapport (PDF paysage)"
             >
               <FileDown className="h-5 w-5" />
             </Button>
@@ -175,9 +192,12 @@ export function ProjectDetailModal({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div
+          className="flex min-h-0 flex-1 flex-col lg:flex-row"
+          data-capture-flex-fill
+        >
           <div className="flex w-full shrink-0 flex-col border-b border-slate-100 dark:border-slate-800 lg:w-[28%] lg:max-w-sm lg:border-b-0 lg:border-r">
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4" data-capture-scroll>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Informations du projet
               </h3>
@@ -188,7 +208,7 @@ export function ProjectDetailModal({
                       key={label}
                       className="border-b border-slate-50 last:border-0 dark:border-slate-800"
                     >
-                      <td className="py-2 pr-3 align-top font-medium text-slate-500">
+                      <td className="py-2 pr-3 align-top font-bold text-slate-700 dark:text-slate-300">
                         {label}
                       </td>
                       <td className="py-2 text-slate-800 dark:text-slate-200">{value}</td>
@@ -198,7 +218,10 @@ export function ProjectDetailModal({
               </table>
             </div>
             {project.status !== 'termine' && (
-              <div className="border-t border-slate-100 p-4 dark:border-slate-800">
+              <div
+                className="border-t border-slate-100 p-4 dark:border-slate-800"
+                data-capture-hide
+              >
                 <Button variant="danger" className="w-full" onClick={handleArchive}>
                   <Archive className="h-4 w-4" />
                   Clôturer le projet
@@ -207,7 +230,11 @@ export function ProjectDetailModal({
             )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-5">
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-5"
+            data-capture-flex-fill
+            data-capture-scroll
+          >
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <FinanceCard label="Total entrées" value={formatMoney(finance.entrees)} variant="in" />
               <FinanceCard label="Total sorties" value={formatMoney(finance.sorties)} variant="out" />
@@ -224,7 +251,7 @@ export function ProjectDetailModal({
               />
             </div>
 
-            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2" data-capture-flex-fill>
               <MovementSection
                 title="Entrées"
                 count={movements.entrees.length}
@@ -294,8 +321,8 @@ export function ProjectDetailModal({
 function BalanceCard({ amount }: { amount: number }) {
   const positif = amount >= 0
   const colors = positif
-    ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900 dark:bg-emerald-950/40 dark:hover:border-emerald-700'
-    : 'border-red-200 bg-red-50 hover:border-red-300 hover:shadow-md dark:border-red-900 dark:bg-red-950/40 dark:hover:border-red-700'
+    ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900 dark:bg-emerald-950 dark:hover:border-emerald-700'
+    : 'border-red-200 bg-red-50 hover:border-red-300 hover:shadow-md dark:border-red-900 dark:bg-red-950 dark:hover:border-red-700'
   const text = positif
     ? 'text-emerald-700 dark:text-emerald-400'
     : 'text-red-700 dark:text-red-400'
@@ -332,10 +359,10 @@ function FinanceCard({
   sub?: string
 }) {
   const colors = {
-    in: 'border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900 dark:bg-emerald-950/40 dark:hover:border-emerald-700',
-    out: 'border-red-200 bg-red-50 hover:border-red-300 hover:shadow-md dark:border-red-900 dark:bg-red-950/40 dark:hover:border-red-700',
+    in: 'border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900 dark:bg-emerald-950 dark:hover:border-emerald-700',
+    out: 'border-red-200 bg-red-50 hover:border-red-300 hover:shadow-md dark:border-red-900 dark:bg-red-950 dark:hover:border-red-700',
     margin:
-      'border-amber-200 bg-amber-50 hover:border-amber-300 hover:shadow-md dark:border-amber-900 dark:bg-amber-950/40 dark:hover:border-amber-700',
+      'border-amber-200 bg-amber-50 hover:border-amber-300 hover:shadow-md dark:border-amber-900 dark:bg-amber-950 dark:hover:border-amber-700',
   }
   const text = {
     in: 'text-emerald-700 dark:text-emerald-400',
@@ -370,22 +397,26 @@ function MovementSection({
 }) {
   const isEntree = type === 'entree'
   const headerClass = isEntree
-    ? 'border-emerald-100 bg-emerald-50/80 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
-    : 'border-red-100 bg-red-50/80 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+    : 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300'
 
   return (
-    <div className="flex min-h-0 flex-col rounded-xl border border-slate-200 dark:border-slate-700">
+    <div
+      className="flex min-h-0 flex-col rounded-xl border border-slate-200 dark:border-slate-700"
+      data-capture-flex-fill
+    >
       <div
         className={`flex items-center justify-between gap-2 border-b px-3 py-2.5 ${headerClass}`}
       >
         <span className="text-sm font-semibold">{title}</span>
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold tabular-nums dark:bg-slate-900/50">
+          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums dark:bg-slate-800">
             {count}
           </span>
           <button
             type="button"
             onClick={onAdd}
+            data-capture-hide
             title={isEntree ? 'Ajouter une entrée' : 'Ajouter une sortie'}
             aria-label={isEntree ? 'Ajouter une entrée' : 'Ajouter une sortie'}
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition hover:scale-105 ${
@@ -399,7 +430,7 @@ function MovementSection({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto" data-capture-scroll>
         <table className="min-w-full text-xs">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
             <tr>
